@@ -1,0 +1,1 @@
+# nextjs-technical-test-multitenant
