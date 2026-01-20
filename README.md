@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Multi-tenant SaaS Dashboard
 
-## Getting Started
+Aplicación Next.js (App Router) para gestionar proyectos en una arquitectura multi-tenant.
 
-First, run the development server:
+## 🔗 Demo
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Tenant Acme:** [/acme/dashboard](https://sweet-crisp-70a521.netlify.app/acme/dashboard) (3 proyectos: 2 active, 1 archived)
+- **Tenant Umbrella:** [/umbrella/dashboard](https://sweet-crisp-70a521.netlify.app/umbrella/dashboard) (2 proyectos: 1 active, 1 archived)
+- **Tenant Globex:** [/globex/dashboard](https://sweet-crisp-70a521.netlify.app/globex/dashboard) (3 proyectos: 1 active, 2 archived)
+
+---
+
+## 1. Decisiones Técnicas Clave
+
+### Arquitectura de Carpetas
+
+```
+/src
+├── domain/       → Interfaces puras (Project, Tenant) - sin lógica
+├── services/     → Lógica de negocio con filtrado por tenant
+├── mocks/        → Datos mock tipados, fácil swap a BD real
+├── lib/          → Utilidades (tenant-resolver)
+├── components/
+│   ├── ui/       → Componentes atómicos genéricos (StatCard)
+│   └── projects/ → Componentes de dominio (ProjectCard, StatusFilter)
+└── app/          → Solo routing y Server Components
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Separación UI genérica vs UI de dominio:** `StatCard` es genérico (cualquier dashboard puede usarlo), `ProjectCard` conoce el modelo `Project` y vive en `/components/projects/`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Patrón Service Layer
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Los services son **funciones async** pensando en una futura conexión a base de datos. El `tenantId` en cada `Project` actúa como **clave foránea** para garantizar aislamiento de datos.
 
-## Learn More
+### Filtros con URL State
 
-To learn more about Next.js, take a look at the following resources:
+Los filtros de estado (`?status=active`) persisten en la URL en lugar de useState. Esto permite:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- URLs compartibles
+- Historial del navegador funcional
+- Mantener el filtrado al recargar
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Implementé **validación whitelist**: si el parámetro es inválido, se ignora y vuelve a "all".
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 2. Cómo Resolví el Multi-tenant
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+El tenant se extrae del segmento dinámico `[tenant]` en la URL.
+
+**Patrón Guardia en Layout:** La validación ocurre en `app/[tenant]/layout.tsx`. Si el tenant es inválido, se dispara `notFound()` y ninguna página hija se ejecuta. Esto es más eficiente que validar en cada página individualmente.
+
+```
+/[tenant]/layout.tsx  → Valida tenant (Guardia)
+    ├── /dashboard    → Hereda validación ✓
+    ├── /projects     → Hereda validación ✓
+    └── /projects/[id] → Valida que el proyecto pertenezca al tenant
+```
+
+El aislamiento de datos ocurre en el **service layer**, no en la UI. `getProjectsByTenant()` filtra por `tenantId`.
+
+**Seguridad en detalle de proyecto:** En `/[tenant]/projects/[id]`, el aislamiento no es solo visual; el service layer exige ambos IDs (Project + Tenant) para retornar datos, evitando que un ID de proyecto válido sea expuesto en un tenant incorrecto. Si no coincide, se dispara `notFound()`.
+
+---
+
+## 3. Separación Server / Client
+
+| Tipo                  | Uso                                     | Ejemplos           |
+| --------------------- | --------------------------------------- | ------------------ |
+| **Server Components** | Fetching de datos, resolución de tenant | Páginas, Layout    |
+| **Client Components** | Interacciones, estado UI                | `StatusFilter.tsx` |
+
+**Regla aplicada:** El único `"use client"` está en `StatusFilter.tsx`. Las páginas son 100% Server Components.
+
+El filtrado de proyectos ocurre en el servidor. El Client Component solo maneja la interacción de los botones y modifica la URL.
+
+---
+
+## 4. Qué Mejoraría con Más Tiempo
+
+- **Extraer Navbar a componente:** Actualmente está inline en el layout. Lo ideal sería moverlo a `/components/layouts/Navbar.tsx`.
+- **Tests unitarios:** Para los services y validaciones.
+- **Error boundaries:** Manejo granular de errores.
+- **Persistencia real:** Conectar a una base de datos (los services ya son async).
+- **Landing page:** Agregué una página de inicio simple que lista los tenants disponibles para facilitar la navegación, así como un botón para redirigir al home, esto puede mejorarse.
+
+---
+
+## 5. Qué Conscientemente Dejé Afuera
+
+- **Autenticación:** No se solicitó.
+- **CRUD de proyectos:** Solo lectura como se pidió.
+- **Estilos elaborados:** El enunciado indica "no se evalúa estética".
+- **i18n:** Fuera del alcance.
+
+---
+
+## 🛠️ Stack
+
+- Next.js 16 (App Router)
+- TypeScript
+- Tailwind CSS
+
+Visitar: `https://sweet-crisp-70a521.netlify.app/`

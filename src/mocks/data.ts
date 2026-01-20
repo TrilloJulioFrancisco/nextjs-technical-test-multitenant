@@ -11,6 +11,11 @@ export const tenants: Tenant[] = [
     slug: "umbrella",
     name: "Umbrella Inc",
   },
+  {
+    id: "3",
+    slug: "globex",
+    name: "Globex Corporation",
+  },
 ];
 
 export const projects: Project[] = [
@@ -42,6 +47,24 @@ export const projects: Project[] = [
     id: "p5",
     tenantId: "2",
     name: "Internal Dashboard",
+    status: "archived",
+  },
+  {
+    id: "p6",
+    tenantId: "3",
+    name: "AI Processor",
+    status: "active",
+  },
+  {
+    id: "p7",
+    tenantId: "3",
+    name: "Mobile App",
+    status: "archived",
+  },
+  {
+    id: "p8",
+    tenantId: "3",
+    name: "Web App",
     status: "archived",
   },
 ];
