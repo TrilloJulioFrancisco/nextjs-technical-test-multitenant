@@ -19,6 +19,9 @@ export default async function TenantLayout({
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">{tenant.name}</h1>
           <div className="flex gap-4">
+            <Link href="/" className="text-gray-600 hover:text-gray-900">
+              Home
+            </Link>
             <Link
               href={`/${tenant.slug}/dashboard`}
               className="text-gray-600 hover:text-gray-900"
